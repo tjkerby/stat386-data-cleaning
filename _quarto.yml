@@ -1,0 +1,26 @@
+project:
+  type: website
+  output-dir: docs
+  render:
+    - index.qmd
+    - slides.qmd
+  resources:
+    - follow-along.ipynb
+    - cleaning.py
+    - data/talks_reference.csv
+    - data/talks_new.csv
+
+website:
+  title: "STAT 386 | Data cleaning and string operations"
+  navbar:
+    left:
+      - text: Home
+        href: index.qmd
+      - text: Lecture slides
+        href: slides.qmd
+      - text: Follow-along notebook
+        href: follow-along.ipynb
+  page-footer: "STAT 386 · Data cleaning and string operations"
+
+execute:
+  freeze: auto

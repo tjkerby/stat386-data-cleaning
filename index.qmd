@@ -1,0 +1,35 @@
+---
+title: "Data cleaning and string operations"
+subtitle: "STAT 386"
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+---
+
+## The question for today
+
+When two datasets have been processed separately, how can we tell whether their columns still mean the same thing?
+
+We will turn messy talk metadata into repeatable cleaning rules. String operations provide the hands-on example. We will then compare two versions of a pipeline and decide which results are compatible.
+
+## Materials
+
+- [Lecture slides](slides.qmd)
+- [Download the follow-along notebook](follow-along.ipynb)
+- [View the cleaning functions](cleaning.py)
+- [Reference talk records](data/talks_reference.csv) and [new talk records](data/talks_new.csv)
+
+The talk titles and word counts are invented for this lesson. The notebook and slides use the same data and fixed reference values.
+
+## Run the notebook
+
+Clone or download this repository, run `uv sync`, and open `follow-along.ipynb` in Positron with the project's `.venv` Python kernel. If Positron does not list the kernel, run the installation command in the local `README.md`.
+
+## Today's route
+
+1. Review missingness using the observation indicator $R$.
+2. Predict the output of simple pandas string operations.
+3. Write a function that cleans speaker keys and scales word counts.
+4. Check the output, then inspect what changes when the processing rule changes.

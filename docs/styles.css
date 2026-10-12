@@ -1,0 +1,5 @@
+:root { --ink: #102b46; --accent: #186a7b; --paper: #f8fafc; }
+body { color: var(--ink); }
+h1, h2, h3 { color: var(--ink); }
+a { color: var(--accent); }
+.small-note { font-size: .9rem; color: #536274; }

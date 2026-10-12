@@ -1,0 +1,338 @@
+---
+title: "Data cleaning and string operations"
+subtitle: "Reproducible processing of talk data"
+author: "STAT 386"
+date: "2026-10-12"
+format:
+  revealjs:
+    theme: simple
+    css: slide.css
+    slide-number: true
+    transition: none
+    center: false
+    footer: "STAT 386"
+    embed-resources: true
+execute:
+  enabled: false
+---
+
+## Warmup: missingness in the last lecture
+
+We have `word_count` ($Y$), recorded duration ($X$), and an indicator $R=1$ if `word_count` is missing.
+
+An import bug makes `word_count` more likely to be missing for talks with **long recorded durations**. The bug does not use the word count itself.
+
+**With a partner:** Is this MCAR, MAR, or MNAR under the stated mechanism? What would a plot of missingness by duration help you check? What could it *not* establish?
+
+::: {.aside}
+Think 45 seconds. Compare 45 seconds. Share one reason.
+:::
+
+## Warmup: one defensible answer
+
+Under the stated mechanism, $P(R=1\mid Y,X)$ varies with observed duration $X$, but not with $Y$ after accounting for $X$. That is **MAR**, not MCAR.
+
+A plot can show whether missingness varies with recorded duration. It cannot prove that missingness does not also depend on the unobserved word counts.
+
+Today's records include a missing speaker. Cleaning should preserve that uncertainty, rather than invent a name.
+
+## A new problem after joins and missingness
+
+Two batches of talk records use these speaker labels:
+
+| Older batch | New batch |
+|---|---|
+| `" Russell M. Nelson "` | `"Russell  M. Nelson "` |
+| `"Dallin H. Oaks"` | `" Dallin H. Oaks"` |
+
+**Predict:** What happens if we group or join using the raw speaker strings?
+
+::: {.aside}
+The names and word counts in this lesson form illustrative data, not claims about actual talks.
+:::
+
+## The actual row values matter
+
+| talk_id | speaker | word_count |
+|---|---|---:|
+| T01 | `" Russell M. Nelson "` | 1000 |
+| T02 | `"Dallin H. Oaks"` | 2000 |
+| T03 | `"Dieter F. Uchtdorf"` | 3000 |
+| T04 | `"Russell  M. Nelson "` | 3500 |
+| T05 | `" Dallin H. Oaks"` | 1500 |
+| T06 | missing | 2500 |
+
+The `talk_id` identifies each record. We will keep the original speaker for display and make a separate speaker key for matching.
+
+## A cleaning rule is a decision
+
+We choose a rule for comparison: remove leading and trailing spaces, then use lowercase.
+
+```python
+key = talks["speaker"].astype("string").str.strip().str.lower()
+```
+
+**Predict the three results:**
+
+| Original | After the rule |
+|---|---|
+| `" Russell M. Nelson "` | ? |
+| `"Russell  M. Nelson "` | ? |
+| missing | ? |
+
+## The first rule has a limit
+
+| Original | After `.str.strip().str.lower()` |
+|---|---|
+| `" Russell M. Nelson "` | `"russell m. nelson"` |
+| `"Russell  M. Nelson "` | `"russell  m. nelson"` |
+| missing | missing |
+
+`.str.strip()` only removes spaces at the ends. The two keys still differ because one has **two internal spaces**.
+
+::: {.aside}
+Using pandas' string dtype keeps missing entries missing. Avoid converting them into the literal text `"nan"`.
+:::
+
+## What a repeatable pipeline buys us
+
+```text
+Raw table
+  inspect problem
+  apply stated rules
+  check the output
+Processed table
+```
+
+A function applies the same rules to the old and new batches. If a rule changes, we can return to the raw records and rerun the process.
+
+**Question:** What would we lose if we kept only the processed speaker key?
+
+## Follow along: load the reference records
+
+```python
+from pathlib import Path
+import pandas as pd
+
+DATA = Path("data")
+reference = pd.read_csv(DATA / "talks_reference.csv")
+reference[["talk_id", "speaker", "word_count"]]
+```
+
+| talk_id | speaker | word_count |
+|---|---|---:|
+| T01 | `" Russell M. Nelson "` | 1000 |
+| T02 | `"Dallin H. Oaks"` | 2000 |
+| T03 | `"Dieter F. Uchtdorf"` | 3000 |
+
+::: {.aside}
+Spaces inside quotes are intentional; the DataFrame display itself will not show quote marks.
+:::
+
+## Follow along: build a key without altering the name
+
+```python
+first_pass = reference.copy()
+first_pass["speaker_key"] = (
+    first_pass["speaker"].astype("string").str.strip().str.lower()
+)
+first_pass[["talk_id", "speaker_key"]]
+```
+
+| talk_id | speaker_key |
+|---|---|
+| T01 | `russell m. nelson` |
+| T02 | `dallin h. oaks` |
+| T03 | `dieter f. uchtdorf` |
+
+Why create a new column instead of replacing `speaker`?
+
+## A numeric rule also needs a reference
+
+For today's example, the **reference** word counts are 1000, 2000, and 3000.
+
+$$z = \frac{x - 2000}{1000}$$
+
+The mean is 2000 and the **population** standard deviation is 1000. We record those values and reuse them for future batches.
+
+| Raw `word_count` | z-score |
+|---:|---:|
+| 1000 | −1 |
+| 2000 | 0 |
+| 3000 | 1 |
+
+::: {.aside}
+In predictive modeling, estimate scaling values on the training set and reuse them for held-out data.
+:::
+
+## Follow along: put the rules in a function
+
+```python
+def clean_talks(raw):
+    result = raw.copy()
+    result["speaker_key"] = (
+        result["speaker"].astype("string").str.strip().str.lower()
+    )
+    result["word_count"] = pd.to_numeric(result["word_count"])
+    result["word_scaled"] = (result["word_count"] - 2000) / 1000
+    return result
+
+cleaned = clean_talks(reference)
+```
+
+**Predict:** Does `reference` gain a `speaker_key` column? Why?
+
+## Follow along: inspect and check
+
+```python
+cleaned[["talk_id", "speaker_key", "word_count", "word_scaled"]]
+```
+
+| talk_id | speaker_key | word_count | word_scaled |
+|---|---|---:|---:|
+| T01 | `russell m. nelson` | 1000 | −1 |
+| T02 | `dallin h. oaks` | 2000 | 0 |
+| T03 | `dieter f. uchtdorf` | 3000 | 1 |
+
+```python
+assert cleaned["talk_id"].is_unique
+assert cleaned["word_count"].ge(0).all()
+assert "speaker_key" not in reference.columns
+```
+
+These checks test claims about the records, counts, and untouched input. Unknown speaker names can stay missing.
+
+## Think, pair, share: a new batch arrives
+
+Apply the same `clean_talks` function to the new batch.
+
+| talk_id | speaker | word_count |
+|---|---|---:|
+| T04 | `"Russell  M. Nelson "` | 3500 |
+| T05 | `" Dallin H. Oaks"` | 1500 |
+| T06 | missing | 2500 |
+
+**Predict first:** What are T04's `speaker_key` and `word_scaled`? Will T01 and T04 group together? What should happen to T06's speaker key?
+
+::: {.aside}
+Think 1 minute. Compare solutions for 2 minutes. Share a proposed repair and how to check it.
+:::
+
+## The new batch reveals a flaw
+
+```python
+new = pd.read_csv(DATA / "talks_new.csv")
+new_cleaned = clean_talks(new)
+new_cleaned[["talk_id", "speaker_key", "word_scaled"]]
+```
+
+| talk_id | speaker_key | word_scaled |
+|---|---|---:|
+| T04 | `russell  m. nelson` | 1.5 |
+| T05 | `dallin h. oaks` | −0.5 |
+| T06 | missing | 0.5 |
+
+T04 fails to match T01. T06 still has a missing speaker key, which reflects what we know.
+
+## A stronger string rule
+
+```python
+key = (
+    new["speaker"].astype("string")
+    .str.split().str.join(" ").str.lower()
+)
+```
+
+| Original | New key |
+|---|---|
+| `"Russell  M. Nelson "` | `russell m. nelson` |
+| `" Dallin H. Oaks"` | `dallin h. oaks` |
+| missing | missing |
+
+Splitting on whitespace and rejoining with one space also handles multiple internal spaces. Check the key on **both** batches before combining.
+
+## The processing rule has changed
+
+| Version | Speaker key | Scaled word count |
+|---|---|---|
+| v1 | Trim ends, lowercase | z-score with mean 2000, standard deviation 1000 |
+| v2 | Collapse whitespace, lowercase | min–max scale with minimum 1000, maximum 3000 |
+
+We keep `speaker` and `word_count` in the processed tables. A column named `word_scaled` means something different under v1 and v2.
+
+::: {.aside}
+These are illustrative changes. Neither numeric scale is automatically better; the analysis determines the useful representation.
+:::
+
+## Numeric output under each version
+
+For v2, $s=(x-1000)/(3000-1000)$.
+
+| Raw count | v1 z-score | v2 min–max value |
+|---:|---:|---:|
+| 1000 | −1 | 0 |
+| 1500 | −0.5 | 0.25 |
+| 2000 | 0 | 0.5 |
+| 3000 | 1 | 1 |
+| 3500 | 1.5 | 1.25 |
+
+**Predict:** Why does 3500 produce 1.25 if min–max scaling is often described as giving values between 0 and 1?
+
+## What does “same pipeline version” tell us?
+
+Imagine two groups both run **v2**, but each computes its own minimum and maximum:
+
+| Batch | Observed range | Scaled value for 1500 |
+|---|---|---:|
+| Reference | 1000 to 3000 | 0.25 |
+| New batch | 1500 to 3500 | 0 |
+
+The code can be identical while the numbers have different meanings. A usable record includes the pipeline version **and the fitted values or reference identifier**.
+
+::: {.aside}
+Our code explicitly freezes 1000 and 3000 from the reference batch; it does not fit a new scale to each incoming batch.
+:::
+
+## Are the two processed tables compatible?
+
+Old records have v1 speaker keys and z-scores. New records have v2 speaker keys and min–max values.
+
+**With a partner, decide for each column:** Can we combine it now, or do we need to rerun a step?
+
+| Column | Your decision |
+|---|---|
+| `talk_id` and original `speaker` | ? |
+| `word_count` | ? |
+| `speaker_key` | ? |
+| `word_scaled` | ? |
+
+## Compatibility: a working answer
+
+| Column | Decision |
+|---|---|
+| `talk_id`, original `speaker`, `word_count` | Combine if they still represent the same fields and units; check IDs and counts. |
+| `speaker_key` | Rerun the v2 rule on the old records, then check matching keys. |
+| `word_scaled` | Rescale the old raw counts using the **same saved** v2 reference values. |
+
+Keep raw data so a changed rule can be rerun. With preserved input columns, we can also rerun only the affected steps. Without the original text, some changes may be impossible to reconstruct.
+
+## What to record with a processed batch
+
+```text
+pipeline_version: talks-v2
+scaling_reference: reference-T01-T03
+mean/std from that reference: 2000 / 1000   (used in v1)
+min/max from that reference: 1000 / 3000    (used in v2)
+```
+
+We also retain the raw table and the code that defines each version. Version labels summarize decisions; they do not replace the code or scaling values.
+
+## Exit check
+
+An old table has v1 `speaker_key` and `word_scaled`. A new table has v2 columns with those same names.
+
+1. Which original fields would you preserve before combining the tables?
+2. Which processed fields need new values, and which saved numeric values would you use?
+3. If a new talk has 3500 words, is v2's value of 1.25 an error?
+
+Next class: What if the text needs more flexible matching or extraction than these simple string methods can provide?

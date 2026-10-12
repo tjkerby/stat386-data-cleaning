@@ -1,0 +1,191 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Data cleaning and string operations",
+    "section": "",
+    "text": "When two datasets have been processed separately, how can we tell whether their columns still mean the same thing?\nWe will turn messy talk metadata into repeatable cleaning rules. String operations provide the hands-on example. We will then compare two versions of a pipeline and decide which results are compatible."
+  },
+  {
+    "objectID": "index.html#the-question-for-today",
+    "href": "index.html#the-question-for-today",
+    "title": "Data cleaning and string operations",
+    "section": "",
+    "text": "When two datasets have been processed separately, how can we tell whether their columns still mean the same thing?\nWe will turn messy talk metadata into repeatable cleaning rules. String operations provide the hands-on example. We will then compare two versions of a pipeline and decide which results are compatible."
+  },
+  {
+    "objectID": "index.html#materials",
+    "href": "index.html#materials",
+    "title": "Data cleaning and string operations",
+    "section": "Materials",
+    "text": "Materials\n\nLecture slides\nDownload the follow-along notebook\nView the cleaning functions\nReference talk records and new talk records\n\nThe talk titles and word counts are invented for this lesson. The notebook and slides use the same data and fixed reference values."
+  },
+  {
+    "objectID": "index.html#run-the-notebook",
+    "href": "index.html#run-the-notebook",
+    "title": "Data cleaning and string operations",
+    "section": "Run the notebook",
+    "text": "Run the notebook\nClone or download this repository, run uv sync, and open follow-along.ipynb in Positron with the project’s .venv Python kernel. If Positron does not list the kernel, run the installation command in the local README.md."
+  },
+  {
+    "objectID": "index.html#todays-route",
+    "href": "index.html#todays-route",
+    "title": "Data cleaning and string operations",
+    "section": "Today’s route",
+    "text": "Today’s route\n\nReview missingness using the observation indicator \\(R\\).\nPredict the output of simple pandas string operations.\nWrite a function that cleans speaker keys and scales word counts.\nCheck the output, then inspect what changes when the processing rule changes."
+  },
+  {
+    "objectID": "slides.html#warmup-missingness-in-the-last-lecture",
+    "href": "slides.html#warmup-missingness-in-the-last-lecture",
+    "title": "Data cleaning and string operations",
+    "section": "Warmup: missingness in the last lecture",
+    "text": "Warmup: missingness in the last lecture\nWe have word_count (\\(Y\\)), recorded duration (\\(X\\)), and an indicator \\(R=1\\) if word_count is missing.\nAn import bug makes word_count more likely to be missing for talks with long recorded durations. The bug does not use the word count itself.\nWith a partner: Is this MCAR, MAR, or MNAR under the stated mechanism? What would a plot of missingness by duration help you check? What could it not establish?\n\n\nThink 45 seconds. Compare 45 seconds. Share one reason."
+  },
+  {
+    "objectID": "slides.html#warmup-one-defensible-answer",
+    "href": "slides.html#warmup-one-defensible-answer",
+    "title": "Data cleaning and string operations",
+    "section": "Warmup: one defensible answer",
+    "text": "Warmup: one defensible answer\nUnder the stated mechanism, \\(P(R=1\\mid Y,X)\\) varies with observed duration \\(X\\), but not with \\(Y\\) after accounting for \\(X\\). That is MAR, not MCAR.\nA plot can show whether missingness varies with recorded duration. It cannot prove that missingness does not also depend on the unobserved word counts.\nToday’s records include a missing speaker. Cleaning should preserve that uncertainty, rather than invent a name."
+  },
+  {
+    "objectID": "slides.html#a-new-problem-after-joins-and-missingness",
+    "href": "slides.html#a-new-problem-after-joins-and-missingness",
+    "title": "Data cleaning and string operations",
+    "section": "A new problem after joins and missingness",
+    "text": "A new problem after joins and missingness\nTwo batches of talk records use these speaker labels:\n\n\n\nOlder batch\nNew batch\n\n\n\n\n\" Russell M. Nelson \"\n\"Russell  M. Nelson \"\n\n\n\"Dallin H. Oaks\"\n\" Dallin H. Oaks\"\n\n\n\nPredict: What happens if we group or join using the raw speaker strings?\n\n\nThe names and word counts in this lesson form illustrative data, not claims about actual talks."
+  },
+  {
+    "objectID": "slides.html#the-actual-row-values-matter",
+    "href": "slides.html#the-actual-row-values-matter",
+    "title": "Data cleaning and string operations",
+    "section": "The actual row values matter",
+    "text": "The actual row values matter\n\n\n\ntalk_id\nspeaker\nword_count\n\n\n\n\nT01\n\" Russell M. Nelson \"\n1000\n\n\nT02\n\"Dallin H. Oaks\"\n2000\n\n\nT03\n\"Dieter F. Uchtdorf\"\n3000\n\n\nT04\n\"Russell  M. Nelson \"\n3500\n\n\nT05\n\" Dallin H. Oaks\"\n1500\n\n\nT06\nmissing\n2500\n\n\n\nThe talk_id identifies each record. We will keep the original speaker for display and make a separate speaker key for matching."
+  },
+  {
+    "objectID": "slides.html#a-cleaning-rule-is-a-decision",
+    "href": "slides.html#a-cleaning-rule-is-a-decision",
+    "title": "Data cleaning and string operations",
+    "section": "A cleaning rule is a decision",
+    "text": "A cleaning rule is a decision\nWe choose a rule for comparison: remove leading and trailing spaces, then use lowercase.\nkey = talks[\"speaker\"].astype(\"string\").str.strip().str.lower()\nPredict the three results:\n\n\n\nOriginal\nAfter the rule\n\n\n\n\n\" Russell M. Nelson \"\n?\n\n\n\"Russell  M. Nelson \"\n?\n\n\nmissing\n?"
+  },
+  {
+    "objectID": "slides.html#the-first-rule-has-a-limit",
+    "href": "slides.html#the-first-rule-has-a-limit",
+    "title": "Data cleaning and string operations",
+    "section": "The first rule has a limit",
+    "text": "The first rule has a limit\n\n\n\nOriginal\nAfter .str.strip().str.lower()\n\n\n\n\n\" Russell M. Nelson \"\n\"russell m. nelson\"\n\n\n\"Russell  M. Nelson \"\n\"russell  m. nelson\"\n\n\nmissing\nmissing\n\n\n\n.str.strip() only removes spaces at the ends. The two keys still differ because one has two internal spaces.\n\n\nUsing pandas’ string dtype keeps missing entries missing. Avoid converting them into the literal text \"nan\"."
+  },
+  {
+    "objectID": "slides.html#what-a-repeatable-pipeline-buys-us",
+    "href": "slides.html#what-a-repeatable-pipeline-buys-us",
+    "title": "Data cleaning and string operations",
+    "section": "What a repeatable pipeline buys us",
+    "text": "What a repeatable pipeline buys us\nRaw table\n  inspect problem\n  apply stated rules\n  check the output\nProcessed table\nA function applies the same rules to the old and new batches. If a rule changes, we can return to the raw records and rerun the process.\nQuestion: What would we lose if we kept only the processed speaker key?"
+  },
+  {
+    "objectID": "slides.html#follow-along-load-the-reference-records",
+    "href": "slides.html#follow-along-load-the-reference-records",
+    "title": "Data cleaning and string operations",
+    "section": "Follow along: load the reference records",
+    "text": "Follow along: load the reference records\nfrom pathlib import Path\nimport pandas as pd\n\nDATA = Path(\"data\")\nreference = pd.read_csv(DATA / \"talks_reference.csv\")\nreference[[\"talk_id\", \"speaker\", \"word_count\"]]\n\n\n\ntalk_id\nspeaker\nword_count\n\n\n\n\nT01\n\" Russell M. Nelson \"\n1000\n\n\nT02\n\"Dallin H. Oaks\"\n2000\n\n\nT03\n\"Dieter F. Uchtdorf\"\n3000\n\n\n\n\n\nSpaces inside quotes are intentional; the DataFrame display itself will not show quote marks."
+  },
+  {
+    "objectID": "slides.html#follow-along-build-a-key-without-altering-the-name",
+    "href": "slides.html#follow-along-build-a-key-without-altering-the-name",
+    "title": "Data cleaning and string operations",
+    "section": "Follow along: build a key without altering the name",
+    "text": "Follow along: build a key without altering the name\nfirst_pass = reference.copy()\nfirst_pass[\"speaker_key\"] = (\n    first_pass[\"speaker\"].astype(\"string\").str.strip().str.lower()\n)\nfirst_pass[[\"talk_id\", \"speaker_key\"]]\n\n\n\ntalk_id\nspeaker_key\n\n\n\n\nT01\nrussell m. nelson\n\n\nT02\ndallin h. oaks\n\n\nT03\ndieter f. uchtdorf\n\n\n\nWhy create a new column instead of replacing speaker?"
+  },
+  {
+    "objectID": "slides.html#a-numeric-rule-also-needs-a-reference",
+    "href": "slides.html#a-numeric-rule-also-needs-a-reference",
+    "title": "Data cleaning and string operations",
+    "section": "A numeric rule also needs a reference",
+    "text": "A numeric rule also needs a reference\nFor today’s example, the reference word counts are 1000, 2000, and 3000.\n\\[z = \\frac{x - 2000}{1000}\\]\nThe mean is 2000 and the population standard deviation is 1000. We record those values and reuse them for future batches.\n\n\n\nRaw word_count\nz-score\n\n\n\n\n1000\n−1\n\n\n2000\n0\n\n\n3000\n1\n\n\n\n\n\nIn predictive modeling, estimate scaling values on the training set and reuse them for held-out data."
+  },
+  {
+    "objectID": "slides.html#follow-along-put-the-rules-in-a-function",
+    "href": "slides.html#follow-along-put-the-rules-in-a-function",
+    "title": "Data cleaning and string operations",
+    "section": "Follow along: put the rules in a function",
+    "text": "Follow along: put the rules in a function\ndef clean_talks(raw):\n    result = raw.copy()\n    result[\"speaker_key\"] = (\n        result[\"speaker\"].astype(\"string\").str.strip().str.lower()\n    )\n    result[\"word_count\"] = pd.to_numeric(result[\"word_count\"])\n    result[\"word_scaled\"] = (result[\"word_count\"] - 2000) / 1000\n    return result\n\ncleaned = clean_talks(reference)\nPredict: Does reference gain a speaker_key column? Why?"
+  },
+  {
+    "objectID": "slides.html#follow-along-inspect-and-check",
+    "href": "slides.html#follow-along-inspect-and-check",
+    "title": "Data cleaning and string operations",
+    "section": "Follow along: inspect and check",
+    "text": "Follow along: inspect and check\ncleaned[[\"talk_id\", \"speaker_key\", \"word_count\", \"word_scaled\"]]\n\n\n\ntalk_id\nspeaker_key\nword_count\nword_scaled\n\n\n\n\nT01\nrussell m. nelson\n1000\n−1\n\n\nT02\ndallin h. oaks\n2000\n0\n\n\nT03\ndieter f. uchtdorf\n3000\n1\n\n\n\nassert cleaned[\"talk_id\"].is_unique\nassert cleaned[\"word_count\"].ge(0).all()\nassert \"speaker_key\" not in reference.columns\nThese checks test claims about the records, counts, and untouched input. Unknown speaker names can stay missing."
+  },
+  {
+    "objectID": "slides.html#think-pair-share-a-new-batch-arrives",
+    "href": "slides.html#think-pair-share-a-new-batch-arrives",
+    "title": "Data cleaning and string operations",
+    "section": "Think, pair, share: a new batch arrives",
+    "text": "Think, pair, share: a new batch arrives\nApply the same clean_talks function to the new batch.\n\n\n\ntalk_id\nspeaker\nword_count\n\n\n\n\nT04\n\"Russell  M. Nelson \"\n3500\n\n\nT05\n\" Dallin H. Oaks\"\n1500\n\n\nT06\nmissing\n2500\n\n\n\nPredict first: What are T04’s speaker_key and word_scaled? Will T01 and T04 group together? What should happen to T06’s speaker key?\n\n\nThink 1 minute. Compare solutions for 2 minutes. Share a proposed repair and how to check it."
+  },
+  {
+    "objectID": "slides.html#the-new-batch-reveals-a-flaw",
+    "href": "slides.html#the-new-batch-reveals-a-flaw",
+    "title": "Data cleaning and string operations",
+    "section": "The new batch reveals a flaw",
+    "text": "The new batch reveals a flaw\nnew = pd.read_csv(DATA / \"talks_new.csv\")\nnew_cleaned = clean_talks(new)\nnew_cleaned[[\"talk_id\", \"speaker_key\", \"word_scaled\"]]\n\n\n\ntalk_id\nspeaker_key\nword_scaled\n\n\n\n\nT04\nrussell  m. nelson\n1.5\n\n\nT05\ndallin h. oaks\n−0.5\n\n\nT06\nmissing\n0.5\n\n\n\nT04 fails to match T01. T06 still has a missing speaker key, which reflects what we know."
+  },
+  {
+    "objectID": "slides.html#a-stronger-string-rule",
+    "href": "slides.html#a-stronger-string-rule",
+    "title": "Data cleaning and string operations",
+    "section": "A stronger string rule",
+    "text": "A stronger string rule\nkey = (\n    new[\"speaker\"].astype(\"string\")\n    .str.split().str.join(\" \").str.lower()\n)\n\n\n\nOriginal\nNew key\n\n\n\n\n\"Russell  M. Nelson \"\nrussell m. nelson\n\n\n\" Dallin H. Oaks\"\ndallin h. oaks\n\n\nmissing\nmissing\n\n\n\nSplitting on whitespace and rejoining with one space also handles multiple internal spaces. Check the key on both batches before combining."
+  },
+  {
+    "objectID": "slides.html#the-processing-rule-has-changed",
+    "href": "slides.html#the-processing-rule-has-changed",
+    "title": "Data cleaning and string operations",
+    "section": "The processing rule has changed",
+    "text": "The processing rule has changed\n\n\n\n\n\n\n\n\nVersion\nSpeaker key\nScaled word count\n\n\n\n\nv1\nTrim ends, lowercase\nz-score with mean 2000, standard deviation 1000\n\n\nv2\nCollapse whitespace, lowercase\nmin–max scale with minimum 1000, maximum 3000\n\n\n\nWe keep speaker and word_count in the processed tables. A column named word_scaled means something different under v1 and v2.\n\n\nThese are illustrative changes. Neither numeric scale is automatically better; the analysis determines the useful representation."
+  },
+  {
+    "objectID": "slides.html#numeric-output-under-each-version",
+    "href": "slides.html#numeric-output-under-each-version",
+    "title": "Data cleaning and string operations",
+    "section": "Numeric output under each version",
+    "text": "Numeric output under each version\nFor v2, \\(s=(x-1000)/(3000-1000)\\).\n\n\n\nRaw count\nv1 z-score\nv2 min–max value\n\n\n\n\n1000\n−1\n0\n\n\n1500\n−0.5\n0.25\n\n\n2000\n0\n0.5\n\n\n3000\n1\n1\n\n\n3500\n1.5\n1.25\n\n\n\nPredict: Why does 3500 produce 1.25 if min–max scaling is often described as giving values between 0 and 1?"
+  },
+  {
+    "objectID": "slides.html#what-does-same-pipeline-version-tell-us",
+    "href": "slides.html#what-does-same-pipeline-version-tell-us",
+    "title": "Data cleaning and string operations",
+    "section": "What does “same pipeline version” tell us?",
+    "text": "What does “same pipeline version” tell us?\nImagine two groups both run v2, but each computes its own minimum and maximum:\n\n\n\nBatch\nObserved range\nScaled value for 1500\n\n\n\n\nReference\n1000 to 3000\n0.25\n\n\nNew batch\n1500 to 3500\n0\n\n\n\nThe code can be identical while the numbers have different meanings. A usable record includes the pipeline version and the fitted values or reference identifier.\n\n\nOur code explicitly freezes 1000 and 3000 from the reference batch; it does not fit a new scale to each incoming batch."
+  },
+  {
+    "objectID": "slides.html#are-the-two-processed-tables-compatible",
+    "href": "slides.html#are-the-two-processed-tables-compatible",
+    "title": "Data cleaning and string operations",
+    "section": "Are the two processed tables compatible?",
+    "text": "Are the two processed tables compatible?\nOld records have v1 speaker keys and z-scores. New records have v2 speaker keys and min–max values.\nWith a partner, decide for each column: Can we combine it now, or do we need to rerun a step?\n\n\n\nColumn\nYour decision\n\n\n\n\ntalk_id and original speaker\n?\n\n\nword_count\n?\n\n\nspeaker_key\n?\n\n\nword_scaled\n?"
+  },
+  {
+    "objectID": "slides.html#compatibility-a-working-answer",
+    "href": "slides.html#compatibility-a-working-answer",
+    "title": "Data cleaning and string operations",
+    "section": "Compatibility: a working answer",
+    "text": "Compatibility: a working answer\n\n\n\n\n\n\n\nColumn\nDecision\n\n\n\n\ntalk_id, original speaker, word_count\nCombine if they still represent the same fields and units; check IDs and counts.\n\n\nspeaker_key\nRerun the v2 rule on the old records, then check matching keys.\n\n\nword_scaled\nRescale the old raw counts using the same saved v2 reference values.\n\n\n\nKeep raw data so a changed rule can be rerun. With preserved input columns, we can also rerun only the affected steps. Without the original text, some changes may be impossible to reconstruct."
+  },
+  {
+    "objectID": "slides.html#what-to-record-with-a-processed-batch",
+    "href": "slides.html#what-to-record-with-a-processed-batch",
+    "title": "Data cleaning and string operations",
+    "section": "What to record with a processed batch",
+    "text": "What to record with a processed batch\npipeline_version: talks-v2\nscaling_reference: reference-T01-T03\nmean/std from that reference: 2000 / 1000   (used in v1)\nmin/max from that reference: 1000 / 3000    (used in v2)\nWe also retain the raw table and the code that defines each version. Version labels summarize decisions; they do not replace the code or scaling values."
+  },
+  {
+    "objectID": "slides.html#exit-check",
+    "href": "slides.html#exit-check",
+    "title": "Data cleaning and string operations",
+    "section": "Exit check",
+    "text": "Exit check\nAn old table has v1 speaker_key and word_scaled. A new table has v2 columns with those same names.\n\nWhich original fields would you preserve before combining the tables?\nWhich processed fields need new values, and which saved numeric values would you use?\nIf a new talk has 3500 words, is v2’s value of 1.25 an error?\n\nNext class: What if the text needs more flexible matching or extraction than these simple string methods can provide?"
+  }
+]
